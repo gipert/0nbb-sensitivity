@@ -5,7 +5,7 @@
 #
 EXE      = discSensVsBI
 CXX      = c++
-CXXFLAGS = -std=c++0y -Wall \
+CXXFLAGS = -std=c++1y -Wall \
            $$(root-config --cflags) \
            $$(bat-config --cflags) \
            -Iinclude
