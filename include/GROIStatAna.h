@@ -16,6 +16,7 @@ class GROIStatAna : public BCModel {
     public :
         // delete default constructor
         GROIStatAna()                              = delete;
+        ~GROIStatAna()                             = default;
         // delete copy constructor/assignement
         GROIStatAna           (GROIStatAna const&) = delete;
         GROIStatAna& operator=(GROIStatAna const&) = delete;
@@ -24,10 +25,12 @@ class GROIStatAna : public BCModel {
         GROIStatAna& operator=(GROIStatAna&&)      = default;
 
         GROIStatAna(GROIRndExp* initExp, bool hasSignal = true, std::string name = "0nbbStatAna");
-        ~GROIStatAna();
-
         // setters
         void SetSpectrum(GROIRndExp* initExp) {fExp = initExp;}
+
+        // getters
+        const GROIRndExp* GetRndExp() const {return fExp;}
+        bool HasSignal() const {return fHasSignal;}
 
         // methods from BCModel to be overloaded
         double LogLikelihood(const std::vector<double>& parameters);

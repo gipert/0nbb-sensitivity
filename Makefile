@@ -5,12 +5,12 @@
 #
 EXE      = discSensVsBI
 CXX      = c++
-CXXFLAGS = -std=c++1y -Wall \
+CXXFLAGS = -std=c++0y -Wall \
            $$(root-config --cflags) \
            $$(bat-config --cflags) \
            -Iinclude
 ifeq ($(shell uname -s),Darwin)
-    CXXFLAGS += -Wno-unused-command-line-argument
+	CXXFLAGS += -Wno-unused-command-line-argument
 endif
 CXXLIBS  = $$(root-config --libs) \
            $$(bat-config --libs)
@@ -28,7 +28,8 @@ OBJECTS = $(patsubst src/%.cxx, obj/%.o, $(SOURCES))
 bin/$(EXE) : $(OBJECTS)
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(CXXLIBS)
 
-obj/%.o : src/%.cxx $(wildcard include/%.h)
+.SECONDEXPANSION:
+obj/%.o : src/%.cxx $$(wildcard include/%.h)
 	$(CXX) $(CXXFLAGS) -c -o $@ $< $(CXXLIBS)
 
 .PHONY : clean

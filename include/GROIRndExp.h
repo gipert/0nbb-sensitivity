@@ -15,6 +15,7 @@ class GROIRndExp : public TH1D {
     public :
         // delete default constructor
         GROIRndExp()                             = delete;
+        ~GROIRndExp()                            = default;
         // delete copy constructor/assignement
         GROIRndExp           (GROIRndExp const&) = delete;
         GROIRndExp& operator=(GROIRndExp const&) = delete;
@@ -28,7 +29,6 @@ class GROIRndExp : public TH1D {
                    double ROIWidth = 100,
                    int    binning = 1,
                    double FWHM = 3);
-        ~GROIRndExp();
 
         // getters
         double GetExposure() const {return fExposure;}
