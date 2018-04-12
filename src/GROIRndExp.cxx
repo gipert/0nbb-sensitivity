@@ -10,21 +10,27 @@
 #include "TF1.h"
 
 GROIRndExp::GROIRndExp(double exposure, double BI, double halfLife, double ROIWidth, int binning, double FWHM) :
+    TH1D(),
+    fExposure(exposure),
+    fBI(BI),
+    fHalfLife(halfLife),
     fROIWidth(ROIWidth),
     fBinning(binning),
-    fFWHM(FWHM),
-    fSpectrum("ROIRndExp",
-              "Random experiment in ROI",
-              fROIWidth/fBinning,
-              fQbb-fROIWidth/2,
-              fQbb+fROIWidth/2)
+    fFWHM(FWHM)
 {
-    int B = BI * exposure * fROIWidth;
-    int S = 4.1615E24 * exposure / halfLife;
+    // initialise base object
+    this->SetName("ROIRndExp");
+    this->SetTitle("Random experiment in ROI");
+    this->SetBins(fROIWidth/fBinning, fQbb-fROIWidth/2, fQbb+fROIWidth/2);
 
+    // calculate total number of bkg and signal counts
+    int B = this->GetBkgCounts();
+    int S = this->GetSignalCounts();
+
+    // fill
     TF1 sModel("signal", "gaus", fQbb-fROIWidth/2, fQbb+fROIWidth/2);
     sModel.SetParameters(fQbb, fFWHM*0.4246);
 
-    fSpectrum.FillRandom("signal", S);
-    fSpectrum.FillRandom("pol0",   B);
+    this->FillRandom("signal", S);
+    this->FillRandom("pol0",   B);
 }
