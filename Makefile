@@ -8,7 +8,7 @@ CXX      = c++
 CXXFLAGS = -std=c++0y -Wall \
            $$(root-config --cflags) \
            $$(bat-config --cflags) \
-           -Iinclude
+           -Iinclude -Itools/jsoncpp
 ifeq ($(shell uname -s),Darwin)
 	CXXFLAGS += -Wno-unused-command-line-argument
 endif
@@ -25,12 +25,16 @@ $(DIRS) :
 SOURCES = $(wildcard src/*.cxx)
 OBJECTS = $(patsubst src/%.cxx, obj/%.o, $(SOURCES))
 
-bin/$(EXE) : $(OBJECTS)
+bin/$(EXE) : $(OBJECTS) obj/jsoncpp.o
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(CXXLIBS)
 
 .SECONDEXPANSION:
 obj/%.o : src/%.cxx $$(wildcard include/%.h)
 	$(CXX) $(CXXFLAGS) -c -o $@ $< $(CXXLIBS)
+
+# third-party
+obj/jsoncpp.o : $(shell find tools/jsoncpp/* -type f)
+	$(CXX) $(CXXFLAGS) -c -o $@ tools/jsoncpp/jsoncpp.cpp
 
 .PHONY : clean
 clean :

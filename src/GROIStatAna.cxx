@@ -17,34 +17,33 @@ GROIStatAna::GROIStatAna(GROIRndExp* initExp, bool hasSignal, std::string name) 
     fHasSignal(hasSignal),
     fExp(initExp)
 {
-    // define parameters
-    /* [0] */  this->AddParameter("B", 0, 10);
-    /* [1] */  this->AddParameter("S", 0, 10);
+    int B = fExp->GetBkgCounts();
+    int S = fExp->GetSignalCounts();
 
-    auto B = fExp->GetBkgCounts();
+    // define parameters
+                   this->AddParameter("B", 0, 2*B);
+    if (hasSignal) this->AddParameter("S", 0, 2*S);
 
     // set priors
     auto funcStr = "(x>0)*(exp(-0.5*((x-" + std::to_string(B) + ")/" + std::to_string(B*.1/2) + ")**2))";
     TF1 posgaus("posgaus", funcStr.c_str(), 0, 1);
-    this->SetPrior(0, posgaus);
-    this->SetPriorConstant(1);
 
-    // eventually fix signal to zero
-    if (!hasSignal) this->GetParameter(1).Fix(0);
+                   this->SetPrior(0, posgaus);
+    if (hasSignal) this->SetPriorConstant(1);
 }
 
 double GROIStatAna::LogLikelihood(const std::vector<double> & p) {
     double logprob = 0.;
+    double exp = 0.;
 
     int    nBins    = fExp->GetNbinsX();
     double qbb      = fExp->GetQbb();
     double sigma    = fExp->GetSigmaRes();
 
     for (int i = 0; i < nBins; ++i) {
-        logprob += BCMath::LogPoisson(
-                       fExp->GetBinContent(i),
-                       p[0]/nBins + p[1]*TMath::Gaus(fExp->GetBinCenter(i), qbb, sigma, true)
-                   );
+        if (fHasSignal) exp = p[0]/nBins + p[1]*TMath::Gaus(fExp->GetBinCenter(i), qbb, sigma, true);
+        else exp = p[0]/nBins;
+        logprob += BCMath::LogPoisson(fExp->GetBinContent(i), exp);
     }
     return logprob;
 }

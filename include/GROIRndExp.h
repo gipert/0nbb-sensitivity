@@ -39,8 +39,8 @@ class GROIRndExp : public TH1D {
         double GetFWHM()     const {return fFWHM;}
         double GetSigmaRes() const {return fFWHM*0.4246;}
 
-        int GetBkgCounts()    const {return (int)std::round(fBI*fExposure*fROIWidth);}
-        int GetSignalCounts() const {return (int)std::round(4.1615E24*fExposure/fHalfLife);}
+        int GetBkgCounts()    const;
+        int GetSignalCounts() const;
 
     private :
         const double fExposure;   // kg•yr

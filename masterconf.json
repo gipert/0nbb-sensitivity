@@ -1,0 +1,47 @@
+{
+    "exposure" : 100,
+    "BI" : 1E-03,
+    "0nbb-halflife" : 1E26,
+
+    "BS-model" : {
+        "prior-probability" : 0.5,
+        "integration-method" : "kIntMonteCarlo",
+
+        "integrator-settings" : {
+            "kIntMonteCarlo" : {
+                "niter-max" : 100000
+            },
+            "kIntCuba" : {
+                "kCubaVegas" : {
+                    "nstart" : 1000000,
+                    "flags" : 0
+                },
+                "kCubaSuave" : {
+                    "neval" : 1000000,
+                    "flags" : 0
+                }
+            }
+        }
+    },
+
+    "B-model" : {
+        "prior-probability" : 0.5,
+        "integration-method" : "kIntMonteCarlo",
+
+        "integrator-settings" : {
+            "kIntMonteCarlo" : {
+                "niter-max" : 100000
+            },
+            "kIntCuba" : {
+                "kCubaVegas" : {
+                    "nstart" : 1000000,
+                    "flags" : 0
+                },
+                "kCubaSuave" : {
+                    "neval" : 1000000,
+                    "flags" : 0
+                }
+            }
+        }
+    }
+}
