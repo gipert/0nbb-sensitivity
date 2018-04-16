@@ -37,6 +37,7 @@ class GROIStatAna : public BCModel {
 
     private :
         const bool fHasSignal;
+        const double currentT12lowerLimit = 8.0E25;
         const GROIRndExp* fExp;
 };
 

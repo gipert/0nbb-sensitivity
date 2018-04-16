@@ -9,6 +9,8 @@
 
 #include "TF1.h"
 
+TRandom3 GROIRndExp::rnd(0);
+
 GROIRndExp::GROIRndExp(double exposure, double BI, double halfLife, double ROIWidth, int binning, double FWHM) :
     TH1D(),
     fExposure(exposure),

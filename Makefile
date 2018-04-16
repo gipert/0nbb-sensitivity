@@ -5,7 +5,7 @@
 #
 EXE      = discSensVsBI
 CXX      = c++
-CXXFLAGS = -std=c++0y -Wall \
+CXXFLAGS = -std=c++0y -Wall -O3 \
            $$(root-config --cflags) \
            $$(bat-config --cflags) \
            -Iinclude -Itools/jsoncpp

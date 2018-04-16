@@ -1,23 +1,42 @@
 {
+    "verbose" : true,
+    "bat-verbose" : "warning",
+
     "exposure" : 100,
-    "BI" : 1E-03,
-    "0nbb-halflife" : 1E26,
+
+    "nexperiments" : 100,
+    "threshold-bayesfactor" : 10,
+    "BI-range" : [1E-04, 1E-02],
+    "BI-npoints" : 6,
+    "0nbb-halflife-range" : [1E25, 1E27],
+    "root-search-precision" : 10,
 
     "BS-model" : {
         "prior-probability" : 0.5,
-        "integration-method" : "kIntMonteCarlo",
+        "integration-method" : "kIntCuba",
+        "cuba-integration-method" : "kCubaDivonne",
 
         "integrator-settings" : {
             "kIntMonteCarlo" : {
-                "niter-max" : 100000
+                "niter-max" : 1000000,
+                "niter-min" : 0
             },
             "kIntCuba" : {
                 "kCubaVegas" : {
-                    "nstart" : 1000000,
+                    "niter-max" : 1000000,
+                    "niter-min" : 0,
+                    "nstart" : 100000,
                     "flags" : 0
                 },
                 "kCubaSuave" : {
-                    "neval" : 1000000,
+                    "niter-max" : 1000000,
+                    "niter-min" : 0,
+                    "neval" : 1000,
+                    "flags" : 0
+                },
+                "kCubaDivonne" : {
+                    "niter-max" : 1000000,
+                    "niter-min" : 0,
                     "flags" : 0
                 }
             }
@@ -27,18 +46,32 @@
     "B-model" : {
         "prior-probability" : 0.5,
         "integration-method" : "kIntMonteCarlo",
+        "cuba-integration-method" : "kCubaVegas",
 
         "integrator-settings" : {
             "kIntMonteCarlo" : {
-                "niter-max" : 100000
+                "niter-max" : 1000000,
+                "niter-min" : 10000
+            },
+            "kIntGrid" : {
+                "niter-max" : 1000000,
+                "niter-min" : 0
+            },
+            "kIntLaplace" : {
+                "niter-max" : 1000000,
+                "niter-min" : 0
             },
             "kIntCuba" : {
                 "kCubaVegas" : {
-                    "nstart" : 1000000,
+                    "niter-max" : 1000000,
+                    "niter-min" : 0,
+                    "nstart" : 10000000,
                     "flags" : 0
                 },
                 "kCubaSuave" : {
-                    "neval" : 1000000,
+                    "niter-max" : 1000000,
+                    "niter-min" : 0,
+                    "neval" : 1000,
                     "flags" : 0
                 }
             }

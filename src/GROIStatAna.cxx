@@ -17,18 +17,22 @@ GROIStatAna::GROIStatAna(GROIRndExp* initExp, bool hasSignal, std::string name) 
     fHasSignal(hasSignal),
     fExp(initExp)
 {
-    int B = fExp->GetBkgCounts();
-    int S = fExp->GetSignalCounts();
-
     // define parameters
-                   this->AddParameter("B", 0, 2*B);
-    if (hasSignal) this->AddParameter("S", 0, 2*S);
+    auto B = fExp->GetExpectedBkgCounts();
+    // bkg range is kinda arbitrary, in principle should be [0,+∞]
+    // given the prior, 4B means 8σ
+                   this->AddParameter("B", 0, 4*B);
+    // signal range goes from 0 to S_max, given by the current most stringent lower limit
+    if (hasSignal) this->AddParameter("S", 0, 4.1615E24*fExp->GetExposure()/currentT12lowerLimit);
 
     // set priors
+    // gaussian if x>0
+    // flat     if x<0
     auto funcStr = "(x>0)*(exp(-0.5*((x-" + std::to_string(B) + ")/" + std::to_string(B*.1/2) + ")**2))";
     TF1 posgaus("posgaus", funcStr.c_str(), 0, 1);
 
                    this->SetPrior(0, posgaus);
+    // flat prior for signal
     if (hasSignal) this->SetPriorConstant(1);
 }
 
