@@ -11,6 +11,8 @@ CXXFLAGS = -std=c++0y -Wall -O3 \
            -Iinclude -Itools/jsoncpp
 ifeq ($(shell uname -s),Darwin)
 	CXXFLAGS += -Wno-unused-command-line-argument
+else
+	CXXFLAGS += -fopenmp
 endif
 CXXLIBS  = $$(root-config --libs) \
            $$(bat-config --libs)

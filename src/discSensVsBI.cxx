@@ -60,7 +60,11 @@ int main(int argc, char** argv) {
     double thBF     = J["threshold-bayesfactor"].asDouble();
     double eps      = J["root-search-precision"].asDouble();
 
+     using clock  = std::chrono::steady_clock;
+     using t_unit = std::chrono::microseconds;
+
     // main loop over x-axis values: BIs
+#pragma omp parallel for
     for (double BI = BImin; BI <= BImax*1.001; BI += (BImax-BImin)/BIpoints) {
 //    for (double BI = BImin; BI <= BImin; BI += (BImax-BImin)/BIpoints) {
         if (verbose) std::cout << "x = " << BI << " cts/(keV•kg•yr)\n" << std::flush;
@@ -75,13 +79,17 @@ int main(int argc, char** argv) {
             if (GetBayesFactor(BI, hl_low, J) >= thBF) nsucc_low++;
         }
         while (true) {
-            if (verbose) std::cout << "Looking into [" << hl_low << "," << hl_up << "]\n";
+//            if (verbose) std::cout << "Looking into [" << hl_low << "," << hl_up << "] ";
             // our next test point
             auto hl_mid = (hl_low+hl_up)/2;
+
+            clock::time_point begin = clock::now();
             // generate the experiments
             for (int i = 0; i < nexp; ++i) {
                 if (GetBayesFactor(BI, hl_mid, J) >= thBF) nsucc_up++;
             }
+            clock::time_point end = clock::now();
+            std::cout << std::chrono::duration_cast<t_unit>(end-begin).count() << " s\n";
             // determine direction of next search
             if ((nsucc_low-nexp/2)*(nsucc_up-nexp/2) > 0 and fabs(nsucc_low-nexp/2) > eps) {
                 hl_low = hl_mid;
@@ -150,15 +158,7 @@ double GetBayesFactor(double BI, double hl, Json::Value J) {
     ConfigureIntegrationModel(mBS, J["BS-model"]);
     ConfigureIntegrationModel(mB ,  J["B-model"]);
 
-    //            using clock = std::chrono::steady_clock;
-    //            using t_unit = std::chrono::microseconds;
-
-    //            clock::time_point begin = clock::now();
     mgr.Integrate();
-    //            clock::time_point end = clock::now();
-
-
-    //            std::cout << "Elapsed: " << std::chrono::duration_cast<t_unit>(end-begin).count() << std::endl;
 /*    std::cout << "B+S model Integral = "
         << mBS->GetIntegral() << " +- "
         << 100*mBS->GetError()/mBS->GetIntegral() << "%\n";
