@@ -65,7 +65,8 @@ int main(int argc, char** argv) {
 
     // main loop over x-axis values: BIs
 #pragma omp parallel for
-    for (double BI = BImin; BI <= BImax*1.001; BI += (BImax-BImin)/BIpoints) {
+    for (int j = 0; j < BIpoints; ++j) {
+        double BI = BImin + (BImax-BImin)*j/BIpoints;
 //    for (double BI = BImin; BI <= BImin; BI += (BImax-BImin)/BIpoints) {
         if (verbose) std::cout << "x = " << BI << " cts/(keV•kg•yr)\n" << std::flush;
         // search strategy: rude Bisection Method
