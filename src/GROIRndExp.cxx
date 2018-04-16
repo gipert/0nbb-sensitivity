@@ -23,9 +23,10 @@ GROIRndExp::GROIRndExp(double exposure, double BI, double halfLife, double ROIWi
     this->SetTitle("Random experiment in ROI");
     this->SetBins(fROIWidth/fBinning, fQbb-fROIWidth/2, fQbb+fROIWidth/2);
 
-    // calculate total number of bkg and signal counts
-    int B = this->GetBkgCounts();
-    int S = this->GetSignalCounts();
+    // calculate number of bkg and signal counts given
+    // the expected value
+    int B = rnd.Poisson(this->GetExpectedBkgCounts());
+    int S = rnd.Poisson(this->GetExpectedSignalCounts());
 
     // fill
     TF1 sModel("signal", "gaus", fQbb-fROIWidth/2, fQbb+fROIWidth/2);
@@ -35,10 +36,10 @@ GROIRndExp::GROIRndExp(double exposure, double BI, double halfLife, double ROIWi
     this->FillRandom("pol0",   B);
 }
 
-int GROIRndExp::GetBkgCounts() const {
+int GROIRndExp::GetExpectedBkgCounts() const {
     return (int)std::round(fBI*fExposure*fROIWidth);
 }
 
-int GROIRndExp::GetSignalCounts() const {
+int GROIRndExp::GetExpectedSignalCounts() const {
     return fHalfLife != 0 ? (int)std::round(4.1615E24*fExposure/fHalfLife) : 0;
 }

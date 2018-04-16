@@ -8,7 +8,8 @@
 #ifndef ZERONBBSENSITIVITY_GROIRNDEXP_H
 #define ZERONBBSENSITIVITY_GROIRNDEXP_H
 
-#include <TH1D.h>
+#include "TH1D.h"
+#include "TRandom3.h"
 
 class GROIRndExp : public TH1D {
 
@@ -39,8 +40,8 @@ class GROIRndExp : public TH1D {
         double GetFWHM()     const {return fFWHM;}
         double GetSigmaRes() const {return fFWHM*0.4246;}
 
-        int GetBkgCounts()    const;
-        int GetSignalCounts() const;
+        int GetExpectedBkgCounts()    const;
+        int GetExpectedSignalCounts() const;
 
     private :
         const double fExposure;   // kg•yr
@@ -50,6 +51,8 @@ class GROIRndExp : public TH1D {
         const int    fROIWidth;   // keV
         const int    fBinning;    // keV
         const double fFWHM;       // keV
+
+        static TRandom3 rnd;
 };
 
 #endif
