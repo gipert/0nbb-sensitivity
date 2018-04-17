@@ -8,12 +8,14 @@
 #include <fstream>
 #include <map>
 #include <chrono>
+#include "omp.h"
 
 #include "GROIRndExp.h"
 #include "GROIStatAna.h"
 
 // BAT and ROOT
 #include <BAT/BCModelManager.h>
+#include "TThread.h"
 
 // other
 //#include "tools/jsoncpp/json/json.h"
@@ -23,6 +25,8 @@ double GetBayesFactor(double BI, double hl, Json::Value J);
 void ConfigureIntegrationModel(BCModel* m, Json::Value JSONIntConf);
 
 int main(int argc, char** argv) {
+
+    TThread::Initialize();
 
     std::string filename;
     if (argc == 2) filename = argv[1];
@@ -60,15 +64,19 @@ int main(int argc, char** argv) {
     double thBF     = J["threshold-bayesfactor"].asDouble();
     double eps      = J["root-search-precision"].asDouble();
 
-     using clock  = std::chrono::steady_clock;
-     using t_unit = std::chrono::microseconds;
+    std::ofstream outfile("results.txt");
+
+    using clock  = std::chrono::steady_clock;
+    using t_unit = std::chrono::microseconds;
 
     // main loop over x-axis values: BIs
-#pragma omp parallel for
+#pragma omp parallel for schedule(auto)
     for (int j = 0; j < BIpoints; ++j) {
         double BI = BImin + (BImax-BImin)*j/BIpoints;
 //    for (double BI = BImin; BI <= BImin; BI += (BImax-BImin)/BIpoints) {
-        if (verbose) std::cout << "x = " << BI << " cts/(keV•kg•yr)\n" << std::flush;
+#pragma omp critical
+        if (verbose) std::cout << "Thread (" << omp_get_thread_num() << ") "
+                               << "processing x = " << BI << " cts/(keV•kg•yr)\n" << std::flush;
         // search strategy: rude Bisection Method
         // initialise search boundaries for sensitivity
         double hl_low    = J["0nbb-halflife-range"][0].asDouble(); // x1
@@ -80,7 +88,7 @@ int main(int argc, char** argv) {
             if (GetBayesFactor(BI, hl_low, J) >= thBF) nsucc_low++;
         }
         while (true) {
-//            if (verbose) std::cout << "Looking into [" << hl_low << "," << hl_up << "] ";
+            if (verbose and omp_get_num_threads() == 1) std::cout << "Looking into [" << hl_low << "," << hl_up << "] ";
             // our next test point
             auto hl_mid = (hl_low+hl_up)/2;
 
@@ -90,7 +98,7 @@ int main(int argc, char** argv) {
                 if (GetBayesFactor(BI, hl_mid, J) >= thBF) nsucc_up++;
             }
             clock::time_point end = clock::now();
-            std::cout << std::chrono::duration_cast<t_unit>(end-begin).count() << " s\n";
+            if (verbose and omp_get_num_threads() == 1) std::cout << std::chrono::duration_cast<t_unit>(end-begin).count() << " s\n";
             // determine direction of next search
             if ((nsucc_low-nexp/2)*(nsucc_up-nexp/2) > 0 and fabs(nsucc_low-nexp/2) > eps) {
                 hl_low = hl_mid;
@@ -111,7 +119,12 @@ int main(int argc, char** argv) {
             }
             nsucc_up = 0;
         }
-        std::cout << "Found sensitivity: " << (hl_low+hl_up)/2 << std::endl;
+#pragma omp critical
+{
+        if (verbose) std::cout << "Thread (" << omp_get_thread_num() << ") "
+                               << " found sensitivity: " << (hl_low+hl_up)/2 << std::endl;
+        outfile << BI << '\t' << (hl_low+hl_up)/2 << '\n';
+}
     }
     return 0;
 }

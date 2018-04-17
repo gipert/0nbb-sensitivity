@@ -1,6 +1,6 @@
 {
     "verbose" : true,
-    "bat-verbose" : "warning",
+    "bat-verbose" : "nothing",
 
     "exposure" : 100,
 
