@@ -31,6 +31,7 @@ GROIRndExp::GROIRndExp(double exposure, double BI, double halfLife, double ROIWi
     int S = rnd.Poisson(this->GetExpectedSignalCounts());
 
     // fill
+    // gaussian for the signal, flat for bkg
     TF1 sModel("signal", "gaus", fQbb-fROIWidth/2, fQbb+fROIWidth/2);
     sModel.SetParameters(1, fQbb, fFWHM*0.4246);
 

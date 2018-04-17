@@ -8,7 +8,10 @@
 #include <fstream>
 #include <map>
 #include <chrono>
-#include "omp.h"
+
+#ifdef GOPARALLEL
+    #include "omp.h"
+#endif
 
 #include "GROIRndExp.h"
 #include "GROIStatAna.h"
@@ -44,8 +47,8 @@ int main(int argc, char** argv) {
     Json::Value J;
     fJSON >> J;
 
-    bool verbose = true;
-//    if (J["verbose"]) verbose = J["verbose"].asBool();
+    bool verbose = false;
+    if (J["verbose"]) verbose = J["verbose"].asBool();
 
     // set BAT output
     std::map<std::string,BCLog::LogLevel> mLog = {
@@ -74,9 +77,12 @@ int main(int argc, char** argv) {
     for (int j = 0; j < BIpoints; ++j) {
         double BI = BImin + (BImax-BImin)*j/BIpoints;
 //    for (double BI = BImin; BI <= BImin; BI += (BImax-BImin)/BIpoints) {
-#pragma omp critical
+#ifdef GOPARALLEL
         if (verbose) std::cout << "Thread (" << omp_get_thread_num() << ") "
                                << "processing x = " << BI << " cts/(keV•kg•yr)\n" << std::flush;
+#else
+        if (verbose) std::cout << "processing x = " << BI << " cts/(keV•kg•yr)\n" << std::flush;
+#endif
         // search strategy: rude Bisection Method
         // initialise search boundaries for sensitivity
         double hl_low    = J["0nbb-halflife-range"][0].asDouble(); // x1
@@ -88,7 +94,11 @@ int main(int argc, char** argv) {
             if (GetBayesFactor(BI, hl_low, J) >= thBF) nsucc_low++;
         }
         while (true) {
+#ifdef GOPARALLEL
             if (verbose and omp_get_num_threads() == 1) std::cout << "Looking into [" << hl_low << "," << hl_up << "] ";
+#else
+            if (verbose) std::cout << "Looking into [" << hl_low << "," << hl_up << "] ";
+#endif
             // our next test point
             auto hl_mid = (hl_low+hl_up)/2;
 
@@ -98,7 +108,11 @@ int main(int argc, char** argv) {
                 if (GetBayesFactor(BI, hl_mid, J) >= thBF) nsucc_up++;
             }
             clock::time_point end = clock::now();
+#ifdef GOPARALLEL
             if (verbose and omp_get_num_threads() == 1) std::cout << std::chrono::duration_cast<t_unit>(end-begin).count() << " s\n";
+#else
+            if (verbose) std::cout << std::chrono::duration_cast<t_unit>(end-begin).count() << " s\n";
+#endif
             // determine direction of next search
             if ((nsucc_low-nexp/2)*(nsucc_up-nexp/2) > 0 and fabs(nsucc_low-nexp/2) > eps) {
                 hl_low = hl_mid;
@@ -119,12 +133,17 @@ int main(int argc, char** argv) {
             }
             nsucc_up = 0;
         }
+#ifdef GOPARALLEL
 #pragma omp critical
 {
         if (verbose) std::cout << "Thread (" << omp_get_thread_num() << ") "
                                << " found sensitivity: " << (hl_low+hl_up)/2 << std::endl;
         outfile << BI << '\t' << (hl_low+hl_up)/2 << '\n';
 }
+#else
+        if (verbose) std::cout << "Found sensitivity: " << (hl_low+hl_up)/2 << std::endl;
+        outfile << BI << '\t' << (hl_low+hl_up)/2 << '\n';
+#endif
     }
     return 0;
 }

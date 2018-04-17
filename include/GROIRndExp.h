@@ -24,6 +24,7 @@ class GROIRndExp : public TH1D {
         GROIRndExp           (GROIRndExp&&)      = default;
         GROIRndExp& operator=(GROIRndExp&&)      = default;
 
+        // halfLife = 0 means halfLife = ∞
         GROIRndExp(double exposure,
                    double BI,
                    double halfLife,
