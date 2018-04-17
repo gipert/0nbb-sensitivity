@@ -29,7 +29,9 @@ void ConfigureIntegrationModel(BCModel* m, Json::Value JSONIntConf);
 
 int main(int argc, char** argv) {
 
+#ifdef GOPARALLEL
     TThread::Initialize();
+#endif
 
     std::string filename;
     if (argc == 2) filename = argv[1];
@@ -78,8 +80,11 @@ int main(int argc, char** argv) {
         double BI = BImin + (BImax-BImin)*j/BIpoints;
 //    for (double BI = BImin; BI <= BImin; BI += (BImax-BImin)/BIpoints) {
 #ifdef GOPARALLEL
+#pragma omp critical
+{
         if (verbose) std::cout << "Thread (" << omp_get_thread_num() << ") "
                                << "processing x = " << BI << " cts/(keV•kg•yr)\n" << std::flush;
+}
 #else
         if (verbose) std::cout << "processing x = " << BI << " cts/(keV•kg•yr)\n" << std::flush;
 #endif
@@ -137,11 +142,11 @@ int main(int argc, char** argv) {
 #pragma omp critical
 {
         if (verbose) std::cout << "Thread (" << omp_get_thread_num() << ") "
-                               << " found sensitivity: " << (hl_low+hl_up)/2 << std::endl;
+                               << "found sensitivity -> " << (hl_low+hl_up)/2 << std::endl;
         outfile << BI << '\t' << (hl_low+hl_up)/2 << '\n';
 }
 #else
-        if (verbose) std::cout << "Found sensitivity: " << (hl_low+hl_up)/2 << std::endl;
+        if (verbose) std::cout << "Found sensitivity -> " << (hl_low+hl_up)/2 << std::endl;
         outfile << BI << '\t' << (hl_low+hl_up)/2 << '\n';
 #endif
     }

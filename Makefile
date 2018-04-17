@@ -11,9 +11,8 @@ CXXFLAGS = -std=c++1y -Wall -O3 \
            -Iinclude -Itools/jsoncpp
 ifeq ($(shell uname -s),Darwin)
 	CXXFLAGS += -Wno-unused-command-line-argument
-	GOPARALLEL = false
 else
-	CXXFLAGS += -fopenmp
+	CXXFLAGS += -fopenmp -DGOPARALLEL
 endif
 CXXLIBS  = $$(root-config --libs) \
            $$(bat-config --libs)

@@ -7,7 +7,7 @@
     "nexperiments" : 100,
     "threshold-bayesfactor" : 10,
     "BI-range" : [1E-04, 1E-02],
-    "BI-npoints" : 6,
+    "BI-npoints" : 10,
     "0nbb-halflife-range" : [1E25, 1E27],
     "root-search-precision" : 10,
 
