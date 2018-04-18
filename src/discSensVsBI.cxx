@@ -18,33 +18,38 @@
 
 // BAT and ROOT
 #include <BAT/BCModelManager.h>
-#include "TThread.h"
 
 // other
 //#include "tools/jsoncpp/json/json.h"
 #include "json/json.h"
 
-double GetBayesFactor(double BI, double hl, Json::Value J);
+struct BF {
+    double bayes_factor;
+    double error;
+};
+
+BF GetBayesFactor(double BI, double hl, Json::Value J);
 void ConfigureIntegrationModel(BCModel* m, Json::Value JSONIntConf);
 
 int main(int argc, char** argv) {
 
 #ifdef GOPARALLEL
-    TThread::Initialize();
+    ROOT::EnableThreadSafety();
 #endif
 
-    std::string filename;
-    if (argc == 2) filename = argv[1];
-    else {
-        std::cerr << "I need the masterconf!\n";
+    if (argc != 3) {
+        std::cerr << "USAGE: discSensVsBI <masterconf.json> <BI-value>\n";
         return 1;
     }
 
+    std::string filename = argv[1];
     std::ifstream fJSON(filename.c_str());
     if (!fJSON.is_open()) {
         std::cerr << filename << " does not exists!\n";
         return 1;
     }
+
+    double BI = std::atof(argv[2]);
 
     Json::Value J;
     fJSON >> J;
@@ -62,72 +67,80 @@ int main(int argc, char** argv) {
     };
     if (J["bat-verbose"]) BCLog::SetLogLevel(mLog[J["bat-verbose"].asString()]);
 
-    double BImin    = J["BI-range"][0].asDouble();
-    double BImax    = J["BI-range"][1].asDouble();
-    int    BIpoints = J["BI-npoints"].asInt();
+//    double BImin    = J["BI-range"][0].asDouble();
+//    double BImax    = J["BI-range"][1].asDouble();
+//    int    BIpoints = J["BI-npoints"].asInt();
     int    nexp     = J["nexperiments"].asInt();
     double thBF     = J["threshold-bayesfactor"].asDouble();
     double eps      = J["root-search-precision"].asDouble();
 
-    std::ofstream outfile("results.txt");
+//    std::ofstream outfile("results.txt");
 
     using clock  = std::chrono::steady_clock;
-    using t_unit = std::chrono::microseconds;
+    using t_unit = std::chrono::seconds;
 
     // main loop over x-axis values: BIs
-#pragma omp parallel for schedule(auto)
-    for (int j = 0; j < BIpoints; ++j) {
-        double BI = BImin + (BImax-BImin)*j/BIpoints;
+//    for (int j = 0; j < BIpoints; ++j) {
+//        double BI = BImin + (BImax-BImin)*j/BIpoints;
 //    for (double BI = BImin; BI <= BImin; BI += (BImax-BImin)/BIpoints) {
-#ifdef GOPARALLEL
-#pragma omp critical
-{
-        if (verbose) std::cout << "Thread (" << omp_get_thread_num() << ") "
-                               << "processing x = " << BI << " cts/(keV•kg•yr)\n" << std::flush;
-}
-#else
-        if (verbose) std::cout << "processing x = " << BI << " cts/(keV•kg•yr)\n" << std::flush;
-#endif
+        if (verbose) std::cout << "BI = " << BI << " cts/(keV•kg•yr)\n" << std::flush;
         // search strategy: rude Bisection Method
         // initialise search boundaries for sensitivity
         double hl_low    = J["0nbb-halflife-range"][0].asDouble(); // x1
+        double hl_mid    = 0;
         double hl_up     = J["0nbb-halflife-range"][1].asDouble(); // x2
         int    nsucc_low = 0;                                      // f(x1)
+        int    nsucc_mid = 0;
         int    nsucc_up  = 0;                                      // f(x2)
         // we need a first value for a boundary, e.g. hl_low
+#pragma omp parallel for reduction(+:nsucc_low)
         for (int i = 0; i < nexp; ++i) {
-            if (GetBayesFactor(BI, hl_low, J) >= thBF) nsucc_low++;
+            if (GetBayesFactor(BI, hl_low, J).bayes_factor >= thBF) nsucc_low++;
         }
         while (true) {
-#ifdef GOPARALLEL
-            if (verbose and omp_get_num_threads() == 1) std::cout << "Looking into [" << hl_low << "," << hl_up << "] ";
-#else
-            if (verbose) std::cout << "Looking into [" << hl_low << "," << hl_up << "] ";
-#endif
+            if (verbose) std::cout << "Looking into [" << hl_low << "," << hl_up << "]yr, ∆ = " << hl_up-hl_low << "yr, with " << nexp << " experiments...";
             // our next test point
-            auto hl_mid = (hl_low+hl_up)/2;
+            hl_mid = (hl_low+hl_up)/2;
 
             clock::time_point begin = clock::now();
             // generate the experiments
+#pragma omp parallel for reduction(+:nsucc_up)
             for (int i = 0; i < nexp; ++i) {
-                if (GetBayesFactor(BI, hl_mid, J) >= thBF) nsucc_up++;
+                if (GetBayesFactor(BI, hl_mid, J).bayes_factor >= thBF) nsucc_mid++;
             }
             clock::time_point end = clock::now();
-#ifdef GOPARALLEL
-            if (verbose and omp_get_num_threads() == 1) std::cout << std::chrono::duration_cast<t_unit>(end-begin).count() << " s\n";
-#else
-            if (verbose) std::cout << std::chrono::duration_cast<t_unit>(end-begin).count() << " s\n";
-#endif
+            if (verbose) std::cout << " time: " << std::chrono::duration_cast<t_unit>(end-begin).count() << "s\n";
             // determine direction of next search
-            if ((nsucc_low-nexp/2)*(nsucc_up-nexp/2) > 0 and fabs(nsucc_low-nexp/2) > eps) {
+            if ((nsucc_low-nexp/2)*(nsucc_mid-nexp/2) > 0
+                and (fabs(nsucc_up-nsucc_low) > 2*eps
+                     or fabs(nsucc_mid-nexp/2) > eps)) {
+
+                if (verbose) {
+                    std::cout << "\thalf-life\t# succ. exp. / tot\n"
+                              << "low\t" << hl_low << '\t' << nsucc_low << '\n'
+                              << "mid\t" << hl_mid << '\t' << nsucc_mid << " <-- new low\n"
+                              << "up\t"  << hl_up  << '\t' << nsucc_up  << " <-- new up\n\n";
+                }
+
                 hl_low = hl_mid;
                 // hl_up = hl_up;
-                nsucc_low = nsucc_up;
+                nsucc_low = nsucc_mid;
             }
-            else if ((nsucc_low-nexp/2)*(nsucc_up-nexp/2) < 0 and fabs(nsucc_low-nexp/2) > eps) {
+            else if ((nsucc_low-nexp/2)*(nsucc_mid-nexp/2) < 0
+                      and (fabs(nsucc_up-nsucc_low) > 2*eps
+                           or fabs(nsucc_mid-nexp/2) > eps)) {
+
+                if (verbose) {
+                    std::cout << "\thalf-life\t# succ. exp. / tot\n"
+                              << "low\t" << hl_low << '\t' << nsucc_low << " <-- new low\n"
+                              << "mid\t" << hl_mid << '\t' << nsucc_mid << " <-- new up\n"
+                              << "up\t"  << hl_up  << '\t' << nsucc_up  << "\n\n";
+                }
+
                 // hl_low = hl_low
                 hl_up = hl_mid;
                 // nsucc_low = nsucc_low;
+                nsucc_up = nsucc_mid;
             }
             else {
                 if (hl_low == J["0nbb-halflife-range"][0].asDouble()
@@ -136,24 +149,15 @@ int main(int argc, char** argv) {
                 }
                 break;
             }
-            nsucc_up = 0;
+            nsucc_mid = 0;
         }
-#ifdef GOPARALLEL
-#pragma omp critical
-{
-        if (verbose) std::cout << "Thread (" << omp_get_thread_num() << ") "
-                               << "found sensitivity -> " << (hl_low+hl_up)/2 << std::endl;
-        outfile << BI << '\t' << (hl_low+hl_up)/2 << '\n';
-}
-#else
-        if (verbose) std::cout << "Found sensitivity -> " << (hl_low+hl_up)/2 << std::endl;
-        outfile << BI << '\t' << (hl_low+hl_up)/2 << '\n';
-#endif
-    }
+        if (verbose) std::cout << "Found sensitivity -> " << (hl_low+hl_up)/2 << " +- " << (hl_up-hl_low)/2 << "yr\n";
+//        outfile << BI << '\t' << (hl_low+hl_up)/2 << '\t' << (hl_up-hl_low)/2 << '\n';
+//    }
     return 0;
 }
 
-double GetBayesFactor(double BI, double hl, Json::Value J) {
+BF GetBayesFactor(double BI, double hl, Json::Value J) {
     // generate experiment
     GROIRndExp rndExp(J["exposure"].asDouble(), BI, hl);
 
@@ -197,15 +201,24 @@ double GetBayesFactor(double BI, double hl, Json::Value J) {
     ConfigureIntegrationModel(mB ,  J["B-model"]);
 
     mgr.Integrate();
-/*    std::cout << "B+S model Integral = "
+/*
+    std::cout << "B+S model Integral = "
         << mBS->GetIntegral() << " +- "
         << 100*mBS->GetError()/mBS->GetIntegral() << "%\n";
     std::cout << "B   model Integral = "
         << mB ->GetIntegral() << " +- "
         << 100*mB ->GetError()/mB ->GetIntegral() << "%\n";
-    std::cout << "Bayes Factor = " + std::to_string(mgr.BayesFactor(0, 1)) << std::endl;*/
+    std::cout << "Bayes Factor = " + std::to_string(mgr.BayesFactor(0, 1)) << std::endl;
+*/
+    double bf   = mgr.BayesFactor(0,1);
+    double i0   = mBS->GetIntegral();
+    double s_i0 = mBS->GetError();
+    double i1   = mB ->GetIntegral();
+    double s_i1 = mB ->GetError();
 
-    return mgr.BayesFactor(0,1);
+    if (i0 <= 0 or i1 <= 0) std::cout << "GetBayesFactor: Warning: Integral = 0!\n";
+
+    return {bf, bf*sqrt(s_i0*s_i0/(i0*i0) + s_i1*s_i1/(i1*i1))};
 }
 
 void ConfigureIntegrationModel(BCModel* m, Json::Value JSONModelSettings) {

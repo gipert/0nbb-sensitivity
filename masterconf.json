@@ -2,13 +2,11 @@
     "verbose" : true,
     "bat-verbose" : "nothing",
 
-    "exposure" : 100,
+    "exposure" : 100, // kg•yr
 
-    "nexperiments" : 100,
+    "nexperiments" : 1000,
     "threshold-bayesfactor" : 10,
-    "BI-range" : [1E-04, 1E-02],
-    "BI-npoints" : 10,
-    "0nbb-halflife-range" : [1E25, 1E27],
+    "0nbb-halflife-range" : [5E25, 5E26], // yr
     "root-search-precision" : 10,
 
     "BS-model" : {

@@ -41,15 +41,15 @@ class GROIRndExp : public TH1D {
         double GetFWHM()     const {return fFWHM;}
         double GetSigmaRes() const {return fFWHM*0.4246;}
 
-        int GetExpectedBkgCounts()    const;
-        int GetExpectedSignalCounts() const;
+        double GetExpectedBkgCounts()    const;
+        double GetExpectedSignalCounts() const;
 
     private :
         const double fExposure;   // kg•yr
         const double fBI;         // cts/(keV•kg•yr)
         const double fHalfLife;   // yr
         const double fQbb = 2039; // keV
-        const int    fROIWidth;   // keV
+        const double fROIWidth;   // keV
         const int    fBinning;    // keV
         const double fFWHM;       // keV
 

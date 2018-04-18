@@ -27,8 +27,8 @@ GROIRndExp::GROIRndExp(double exposure, double BI, double halfLife, double ROIWi
 
     // calculate number of bkg and signal counts given
     // the expected value
-    int B = rnd.Poisson(this->GetExpectedBkgCounts());
     int S = rnd.Poisson(this->GetExpectedSignalCounts());
+    int B = rnd.Poisson(this->GetExpectedBkgCounts());
 
     // fill
     // gaussian for the signal, flat for bkg
@@ -39,10 +39,10 @@ GROIRndExp::GROIRndExp(double exposure, double BI, double halfLife, double ROIWi
     this->FillRandom("pol0",   B);
 }
 
-int GROIRndExp::GetExpectedBkgCounts() const {
-    return (int)std::round(fBI*fExposure*fROIWidth);
+double GROIRndExp::GetExpectedBkgCounts() const {
+    return fBI*fExposure*fROIWidth;
 }
 
-int GROIRndExp::GetExpectedSignalCounts() const {
-    return fHalfLife != 0 ? (int)std::round(4.1615E24*fExposure/fHalfLife) : 0;
+double GROIRndExp::GetExpectedSignalCounts() const {
+    return fHalfLife != 0 ? 4.1615E24*fExposure/fHalfLife : 0;
 }

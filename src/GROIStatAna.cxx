@@ -18,7 +18,7 @@ GROIStatAna::GROIStatAna(GROIRndExp* initExp, bool hasSignal, std::string name) 
     fExp(initExp)
 {
     // define parameters
-    auto B = fExp->GetExpectedBkgCounts();
+    double B = fExp->GetExpectedBkgCounts();
     // bkg range is kinda arbitrary, in principle should be [0,+∞]
     // given the prior, 4B means 8σ
                    this->AddParameter("B", 0, 4*B);
@@ -28,8 +28,8 @@ GROIStatAna::GROIStatAna(GROIRndExp* initExp, bool hasSignal, std::string name) 
     // set priors
     // gaussian if x>0
     // flat     if x<0
-    auto funcStr = "(x>0)*(exp(-0.5*((x-" + std::to_string(B) + ")/" + std::to_string(B*.1/2) + ")**2))";
-    TF1 posgaus("posgaus", funcStr.c_str(), 0, 1);
+    TF1 posgaus("posgaus", "gaus", 0, 4*B);
+    posgaus.SetParameters(1, B, B/2);
 
                    this->SetPrior(0, posgaus);
     // flat prior for signal

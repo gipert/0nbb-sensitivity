@@ -26,7 +26,7 @@ class GROIStatAna : public BCModel {
 
         GROIStatAna(GROIRndExp* initExp, bool hasSignal = true, std::string name = "0nbbStatAna");
         // setters
-        void SetSpectrum(GROIRndExp* initExp) {fExp = initExp;}
+//        void SetSpectrum(GROIRndExp* initExp) {fExp = initExp;}
 
         // getters
         const GROIRndExp* GetRndExp() const {return fExp;}
