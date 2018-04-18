@@ -2,7 +2,7 @@
 The `discSensitivityVsBI` executable calculates the discovery sensitivity (half-life for which one correctly reconstructs a signal in 50% of simulated experiments) to a gaussian signal over a flat background vs. the background index `BI`.
 
 Usage:
-````
+```
 discSensVsBI masterconf.json <bkg-index>
 ```
 
