@@ -5,6 +5,7 @@
  *
  */
 #include <iostream>
+#include <iomanip>
 #include <fstream>
 #include <map>
 #include <chrono>
@@ -22,6 +23,7 @@
 // other
 //#include "tools/jsoncpp/json/json.h"
 #include "json/json.h"
+#include "ProgressBar.h"
 
 struct BF {
     double bayes_factor;
@@ -67,93 +69,96 @@ int main(int argc, char** argv) {
     };
     if (J["bat-verbose"]) BCLog::SetLogLevel(mLog[J["bat-verbose"].asString()]);
 
-//    double BImin    = J["BI-range"][0].asDouble();
-//    double BImax    = J["BI-range"][1].asDouble();
-//    int    BIpoints = J["BI-npoints"].asInt();
     int    nexp     = J["nexperiments"].asInt();
     double thBF     = J["threshold-bayesfactor"].asDouble();
     double eps      = J["root-search-precision"].asDouble();
 
-//    std::ofstream outfile("results.txt");
-
     using clock  = std::chrono::steady_clock;
     using t_unit = std::chrono::seconds;
 
-    // main loop over x-axis values: BIs
-//    for (int j = 0; j < BIpoints; ++j) {
-//        double BI = BImin + (BImax-BImin)*j/BIpoints;
-//    for (double BI = BImin; BI <= BImin; BI += (BImax-BImin)/BIpoints) {
-        if (verbose) std::cout << "BI = " << BI << " cts/(keV•kg•yr)\n" << std::flush;
-        // search strategy: rude Bisection Method
-        // initialise search boundaries for sensitivity
-        double hl_low    = J["0nbb-halflife-range"][0].asDouble(); // x1
-        double hl_mid    = 0;
-        double hl_up     = J["0nbb-halflife-range"][1].asDouble(); // x2
-        int    nsucc_low = 0;                                      // f(x1)
-        int    nsucc_mid = 0;
-        int    nsucc_up  = 0;                                      // f(x2)
-        // we need a first value for a boundary, e.g. hl_low
+    if (verbose) std::cout << "BI = " << BI << " cts/(keV•kg•yr)\n" << std::flush;
+    // search strategy: rude Bisection Method
+    // initialise search boundaries for sensitivity
+    double hl_low    = J["0nbb-halflife-range"][0].asDouble(); // x1
+    double hl_mid    = 0;
+    double hl_up     = J["0nbb-halflife-range"][1].asDouble(); // x2
+    int    nsucc_low = 0;                                      // f(x1)
+    int    nsucc_mid = 0;
+    int    nsucc_up  = 0;                                      // f(x2)
+
+    ProgressBar bar(nexp);
+    // we need a first value for a boundary, e.g. hl_low
+    if (verbose) std::cout << "Calculate starting point... ";
 #pragma omp parallel for reduction(+:nsucc_low)
-        for (int i = 0; i < nexp; ++i) {
-            if (GetBayesFactor(BI, hl_low, J).bayes_factor >= thBF) nsucc_low++;
-        }
-        while (true) {
-            if (verbose) std::cout << "Looking into [" << hl_low << "," << hl_up << "]yr, ∆ = " << hl_up-hl_low << "yr, with " << nexp << " experiments...";
-            // our next test point
-            hl_mid = (hl_low+hl_up)/2;
+    for (int i = 0; i < nexp; ++i) {
+#pragma omp critical
+        if (verbose) bar.Update();
+        if (GetBayesFactor(BI, hl_low, J).bayes_factor >= thBF) nsucc_low++;
+    }
+    while (true) {
+        std::cout << "\nLooking into [" << hl_low << "," << hl_up << "]yr, ∆ = " << hl_up-hl_low << "yr, with " << nexp << " experiments...\n";
+        // our next test point
+        hl_mid = (hl_low+hl_up)/2;
 
-            clock::time_point begin = clock::now();
-            // generate the experiments
+        clock::time_point begin = clock::now();
+        // generate the experiments
+        bar.Reset();
 #pragma omp parallel for reduction(+:nsucc_up)
-            for (int i = 0; i < nexp; ++i) {
-                if (GetBayesFactor(BI, hl_mid, J).bayes_factor >= thBF) nsucc_mid++;
-            }
-            clock::time_point end = clock::now();
-            if (verbose) std::cout << " time: " << std::chrono::duration_cast<t_unit>(end-begin).count() << "s\n";
-            // determine direction of next search
-            if ((nsucc_low-nexp/2)*(nsucc_mid-nexp/2) > 0
-                and (fabs(nsucc_up-nsucc_low) > 2*eps
-                     or fabs(nsucc_mid-nexp/2) > eps)) {
-
-                if (verbose) {
-                    std::cout << "\thalf-life\t# succ. exp. / tot\n"
-                              << "low\t" << hl_low << '\t' << nsucc_low << '\n'
-                              << "mid\t" << hl_mid << '\t' << nsucc_mid << " <-- new low\n"
-                              << "up\t"  << hl_up  << '\t' << nsucc_up  << " <-- new up\n\n";
-                }
-
-                hl_low = hl_mid;
-                // hl_up = hl_up;
-                nsucc_low = nsucc_mid;
-            }
-            else if ((nsucc_low-nexp/2)*(nsucc_mid-nexp/2) < 0
-                      and (fabs(nsucc_up-nsucc_low) > 2*eps
-                           or fabs(nsucc_mid-nexp/2) > eps)) {
-
-                if (verbose) {
-                    std::cout << "\thalf-life\t# succ. exp. / tot\n"
-                              << "low\t" << hl_low << '\t' << nsucc_low << " <-- new low\n"
-                              << "mid\t" << hl_mid << '\t' << nsucc_mid << " <-- new up\n"
-                              << "up\t"  << hl_up  << '\t' << nsucc_up  << "\n\n";
-                }
-
-                // hl_low = hl_low
-                hl_up = hl_mid;
-                // nsucc_low = nsucc_low;
-                nsucc_up = nsucc_mid;
-            }
-            else {
-                if (hl_low == J["0nbb-halflife-range"][0].asDouble()
-                    or hl_up == J["0nbb-halflife-range"][1].asDouble()) {
-                    std::cout << "Warning: range boundaries reached!\n";
-                }
-                break;
-            }
-            nsucc_mid = 0;
+        for (int i = 0; i < nexp; ++i) {
+#pragma omp critical
+            if (verbose) bar.Update();
+            if (GetBayesFactor(BI, hl_mid, J).bayes_factor >= thBF) nsucc_mid++;
         }
-        if (verbose) std::cout << "Found sensitivity -> " << (hl_low+hl_up)/2 << " +- " << (hl_up-hl_low)/2 << "yr\n";
-//        outfile << BI << '\t' << (hl_low+hl_up)/2 << '\t' << (hl_up-hl_low)/2 << '\n';
-//    }
+        clock::time_point end = clock::now();
+        if (verbose) std::cout << " time: " << std::chrono::duration_cast<t_unit>(end-begin).count() << "s\n";
+        // determine direction of next search
+        if ((nsucc_low-nexp/2)*(nsucc_mid-nexp/2) > 0
+            and (fabs(nsucc_up-nsucc_low) > 2*eps
+                 or fabs(nsucc_mid-nexp/2) > eps)) {
+
+            if (verbose) {
+                std::cout << "-----------------------------------------\n"
+                          << "\thalf-life\t# succ. exp. / tot\n"
+                          << "-----------------------------------------\n"
+                          << "low\t" << std::setw(10) << hl_low << '\t' << nsucc_low << '\n'
+                          << "mid\t" << std::setw(10) << hl_mid << '\t' << nsucc_mid << " <-- new low\n"
+                          << "up\t"  << std::setw(10) << hl_up  << '\t' << nsucc_up  << " <-- new up\n"
+                          << "-----------------------------------------\n";
+            }
+
+            hl_low = hl_mid;
+            // hl_up = hl_up;
+            nsucc_low = nsucc_mid;
+        }
+        else if ((nsucc_low-nexp/2)*(nsucc_mid-nexp/2) < 0
+                  and (fabs(nsucc_up-nsucc_low) > 2*eps
+                       or fabs(nsucc_mid-nexp/2) > eps)) {
+
+            if (verbose) {
+                std::cout << "-----------------------------------------\n"
+                          << "\thalf-life\t# succ. exp. / tot\n"
+                          << "-----------------------------------------\n"
+                          << "low\t" << std::setw(10) << hl_low << '\t' << nsucc_low << " <-- new low\n"
+                          << "mid\t" << std::setw(10) << hl_mid << '\t' << nsucc_mid << " <-- new up\n"
+                          << "up\t"  << std::setw(10) << hl_up  << '\t' << nsucc_up  << "\n"
+                          << "-----------------------------------------\n";
+            }
+
+            // hl_low = hl_low
+            hl_up = hl_mid;
+            // nsucc_low = nsucc_low;
+            nsucc_up = nsucc_mid;
+        }
+        else {
+            if (hl_low == J["0nbb-halflife-range"][0].asDouble()
+                or hl_up == J["0nbb-halflife-range"][1].asDouble()) {
+                std::cerr << "Warning: range boundaries reached!\n";
+            }
+            break;
+        }
+        nsucc_mid = 0;
+    }
+    if (verbose) std::cout << "Found sensitivity -> " << (hl_low+hl_up)/2 << " +- " << (hl_up-hl_low)/2 << "yr\n";
     return 0;
 }
 
@@ -216,7 +221,7 @@ BF GetBayesFactor(double BI, double hl, Json::Value J) {
     double i1   = mB ->GetIntegral();
     double s_i1 = mB ->GetError();
 
-    if (i0 <= 0 or i1 <= 0) std::cout << "GetBayesFactor: Warning: Integral = 0!\n";
+    if (i0 <= 0 or i1 <= 0) std::cerr << "GetBayesFactor: Warning: Integral = 0!\n";
 
     return {bf, bf*sqrt(s_i0*s_i0/(i0*i0) + s_i1*s_i1/(i1*i1))};
 }

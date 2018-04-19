@@ -4,8 +4,8 @@
 
     "exposure" : 100, // kg•yr
 
-    "nexperiments" : 1000,
-    "threshold-bayesfactor" : 10,
+    "nexperiments" : 100,
+    "threshold-bayesfactor" : 100,
     "0nbb-halflife-range" : [5E25, 5E26], // yr
     "root-search-precision" : 10,
 
