@@ -1,9 +1,6 @@
 #!/bin/bash
-# USAGE: qsub process.qsub <n-points>
 
-#$ -q short
-#$ -t 1 $1
-#$ -N 0nbb-sensitivity.$SGE_TASK_ID
+#$ -P short
 #$ -o /dev/null
 #$ -e /dev/null
 
@@ -11,12 +8,10 @@ export PATH="$PATH:/lfs/l3/gerda/pertoldi/swmod-bin/bat/linux-scientific-7.3-x86
 export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/lfs/l3/gerda/pertoldi/swmod-bin/bat/linux-scientific-7.3-x86_64/master/lib:/lfs/l2/gerda/pertoldi/swmod-bin/root/linux-scientific-7.3-x86_64/6.12.06/lib"
 
 REPO=/lfs/l2/gerda/pertoldi/0nbb-sensitivity
-a=1E-05
-b=1E-02
 
-$REPO/bin/discSensVsBI $REPO/masterconf.json `echo "$a+($SGE_TASK_ID-1)*($a-$b)/($1)" | bc -l` &> $REPO/tools/qsub/log/0nbb-sensitivity.$SGE_TASK_ID.log
+$REPO/bin/discSensVsBI $REPO/masterconf.json $1 &> $REPO/tools/qsub/log/0nbb-sensitivity.$1.log
 
 # send me email if last job
-if [[ `qstat -r | grep 0nbb-sensitivity | grep "Full jobname:"` ]]; then
+if [[ `qstat -r | grep znbb-sensitivity | grep "Full jobname:"` ]]; then
     echo "[lfs2-mpi-hd-mpg.de] 0nbb-sensitivity jobs complete!" | sendmail -v pertoldi@pd.infn.it
 fi

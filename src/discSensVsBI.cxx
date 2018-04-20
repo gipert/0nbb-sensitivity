@@ -57,7 +57,9 @@ int main(int argc, char** argv) {
     fJSON >> J;
 
     bool verbose = false;
+    bool pbar = true;
     if (J["verbose"]) verbose = J["verbose"].asBool();
+    if (J["progress-bar"]) pbar = J["progress-bar"].asBool();
 
     // set BAT output
     std::map<std::string,BCLog::LogLevel> mLog = {
@@ -92,7 +94,7 @@ int main(int argc, char** argv) {
 #pragma omp parallel for reduction(+:nsucc_low)
     for (int i = 0; i < nexp; ++i) {
 #pragma omp critical
-        if (verbose) bar.Update();
+        if (pbar) bar.Update();
         if (GetBayesFactor(BI, hl_low, J).bayes_factor >= thBF) nsucc_low++;
     }
     while (true) {
@@ -106,7 +108,7 @@ int main(int argc, char** argv) {
 #pragma omp parallel for reduction(+:nsucc_up)
         for (int i = 0; i < nexp; ++i) {
 #pragma omp critical
-            if (verbose) bar.Update();
+            if (pbar) bar.Update();
             if (GetBayesFactor(BI, hl_mid, J).bayes_factor >= thBF) nsucc_mid++;
         }
         clock::time_point end = clock::now();
