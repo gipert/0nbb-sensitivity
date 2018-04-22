@@ -7,7 +7,7 @@
 
     "nexperiments" : 1000,
     "threshold-bayesfactor" : 100,
-    "0nbb-halflife-range" : [5E25, 5E26], // yr
+    "0nbb-halflife-range" : [1E25, 5E26], // yr
     "root-search-precision" : 10,
 
     "BS-model" : {

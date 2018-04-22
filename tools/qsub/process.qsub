@@ -9,9 +9,11 @@ export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/lfs/l3/gerda/pertoldi/swmod-bin/bat/li
 
 REPO=/lfs/l2/gerda/pertoldi/0nbb-sensitivity
 
-$REPO/bin/discSensVsBI $REPO/masterconf.json $1 &> $REPO/tools/qsub/log/0nbb-sensitivity.$1.log
+export OMP_NUM_THREADS=1
+cd $REPO
+bin/discSensVsBI masterconf.json $1 &> tools/qsub/log/0nbb-sensitivity.$1.log
 
 # send me email if last job
-if [[ `qstat -r | grep znbb-sensitivity | grep "Full jobname:"` ]]; then
-    echo "[lfs2-mpi-hd-mpg.de] 0nbb-sensitivity jobs complete!" | sendmail -v pertoldi@pd.infn.it
+if [[ $(qstat | grep 'znbb' | wc -l) -eq 1 ]]; then
+    echo '0nbb-sensitivity jobs complete!' | mail -s '[lfs2-mpi-hd-mpg.de] Status Report' pertoldi@pd.infn.it
 fi

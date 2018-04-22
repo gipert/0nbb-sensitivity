@@ -51,7 +51,7 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    double BI = std::atof(argv[2]);
+    double BI = std::atof(argv[argc-1]);
 
     Json::Value J;
     fJSON >> J;
@@ -89,12 +89,13 @@ int main(int argc, char** argv) {
     int    nsucc_up  = 0;                                      // f(x2)
 
     ProgressBar bar(nexp);
+    if (!pbar) bar.ShowBar(false);
     // we need a first value for a boundary, e.g. hl_low
     if (verbose) std::cout << "Calculate starting point... ";
 #pragma omp parallel for reduction(+:nsucc_low)
     for (int i = 0; i < nexp; ++i) {
 #pragma omp critical
-        if (pbar) bar.Update();
+        if (verbose) bar.Update();
         if (GetBayesFactor(BI, hl_low, J).bayes_factor >= thBF) nsucc_low++;
     }
     while (true) {
@@ -108,7 +109,7 @@ int main(int argc, char** argv) {
 #pragma omp parallel for reduction(+:nsucc_up)
         for (int i = 0; i < nexp; ++i) {
 #pragma omp critical
-            if (pbar) bar.Update();
+            if (verbose) bar.Update();
             if (GetBayesFactor(BI, hl_mid, J).bayes_factor >= thBF) nsucc_mid++;
         }
         clock::time_point end = clock::now();
@@ -161,6 +162,10 @@ int main(int argc, char** argv) {
         nsucc_mid = 0;
     }
     if (verbose) std::cout << "Found sensitivity -> " << (hl_low+hl_up)/2 << " +- " << (hl_up-hl_low)/2 << "yr\n";
+    std::ofstream out;
+    out.open("results.txt", std::ofstream::out | std::ofstream::app);
+    out << BI << '\t' << (hl_low+hl_up)/2 << '\t' << (hl_up-hl_low)/2 << '\n';
+    out.close();
     return 0;
 }
 
